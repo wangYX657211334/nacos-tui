@@ -2,7 +2,7 @@ package storage
 
 import (
 	"database/sql"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/glebarez/go-sqlite"
 	"os"
 	"path/filepath"
 )
@@ -13,7 +13,7 @@ func NewConnection() (db *sql.DB, err error) {
 		return nil, err
 	}
 	dbPath := filepath.Join(userHome, ".nacos-tui", "nacos-tui.db")
-	db, err = sql.Open("sqlite3", dbPath)
+	db, err = sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, err
 	}
