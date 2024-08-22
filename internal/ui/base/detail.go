@@ -40,12 +40,12 @@ func NewDetailModel(repo repository.Repository, content string) *DetailModel {
 			NewCommand(*NewSuggestionBuilder().
 				SimpleFormat("set %s ", DetailHeightMaxSize).Regexp("\\d+", DefaultHeightSize),
 				func(repo repository.Repository, param []string) error {
-					return repo.SetProperty(param[3], param[5])
+					return repo.SetProperty(DetailHeightMaxSize, param[2])
 				}),
 			NewCommand(*NewSuggestionBuilder().
 				SimpleFormat("set %s ", DetailWidthSize).Regexp("\\d+", DefaultWidthSize),
 				func(repo repository.Repository, param []string) error {
-					return repo.SetProperty(param[3], param[5])
+					return repo.SetProperty(DetailWidthSize, param[2])
 				}),
 		),
 		repo: repo,

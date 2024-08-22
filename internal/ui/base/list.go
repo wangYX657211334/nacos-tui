@@ -67,7 +67,7 @@ func NewPageListModel(repo repository.Repository, cols []table.Column, extend Ex
 			NewCommand(*NewSuggestionBuilder().
 				SimpleFormat("set %s ", PageSize).Regexp("\\d+", DefaultPageSize),
 				func(repo repository.Repository, param []string) error {
-					return repo.SetProperty(param[3], param[5])
+					return repo.SetProperty(PageSize, param[2])
 				}),
 		),
 		repo:        repo,
