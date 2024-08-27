@@ -1,92 +1,45 @@
 package config
 
 import (
+	"database/sql"
 	"errors"
-	"os"
-	"path/filepath"
 	"strconv"
-	"strings"
-
-	"gopkg.in/yaml.v2"
 )
 
 type Api interface {
-	GetNacosContexts() []NacosContext
-	GetNacosContext() NacosContext
+	GetNacosContexts() ([]NacosContext, error)
+	GetNacosContext() (NacosContext, error)
 	SetNacosContext(name string) error
 	SetNacosContextNamespace(namespace string, namespaceName string) error
-	GetStringProperty(key string, defaultValue string) string
-	GetIntProperty(key string, defaultValue string) int
-	GetBoolProperty(key string, defaultValue string) bool
+	GetProperty(key string, defaultValue string) (string, error)
+	GetIntProperty(key string, defaultValue string) (int, error)
+	GetBoolProperty(key string, defaultValue string) (bool, error)
 	SetProperty(string, string) error
 }
 
-func LoadApplicationConfig() (*ApplicationConfig, error) {
-	userHome, err := os.UserHomeDir()
-	if err != nil {
-		return nil, errors.Join(errors.New("get user home dir error"), err)
-	}
-	configPath := filepath.Join(userHome, ".nacos-tui", "nacos-tui.yaml")
-	_, err = os.Stat(configPath)
-	if os.IsNotExist(err) {
-		defaultConfig := DefaultApplicationConfig()
-		err := SaveApplicationConfig(&defaultConfig)
-		if err != nil {
-			return nil, err
-		}
-	}
-	configBytes, err := os.ReadFile(configPath)
-	if err != nil {
-		return nil, errors.Join(errors.New("application read config error"), err)
-	}
-	var config ApplicationConfig
-	err = yaml.Unmarshal(configBytes, &config)
-	if err != nil {
-		return nil, errors.Join(errors.New("application config unmarshal error"), err)
-	}
-	if config.Properties == nil {
-		config.Properties = make(map[string]string)
-	}
-	return &config, nil
+type configApi struct {
+	db *sql.DB
 }
 
-func SaveApplicationConfig(config *ApplicationConfig) error {
-	userHome, err := os.UserHomeDir()
-	if err != nil {
-		return errors.Join(errors.New("get user home dir error"), err)
-	}
-	configPath := filepath.Join(userHome, ".nacos-tui", "nacos-tui.yaml")
-	configYaml, err := yaml.Marshal(config)
-	if err != nil {
-		return errors.Join(errors.New("application config marshal error"), err)
-	}
-	err = os.WriteFile(configPath, configYaml, 0666)
-	if err != nil {
-		return errors.Join(errors.New("application write config error"), err)
-	}
-	return nil
+func NewApi(db *sql.DB) Api {
+	return &configApi{db: db}
 }
 
-func DefaultApplicationConfig() ApplicationConfig {
-	return ApplicationConfig{
-		UseServer: "local",
-		Servers: []NacosContext{
-			{
-				Name:             "local",
-				Url:              "http://127.0.0.1:8848/nacos",
-				User:             "nacos",
-				Password:         "nacos",
-				UseNamespaceName: "public",
-			},
-		},
-	}
-}
+//func DefaultApplicationConfig() ApplicationConfig {
+//	return ApplicationConfig{
+//		UseServer: "local",
+//		Servers: []NacosContext{
+//			{
+//				Name:             "local",
+//				Url:              "http://127.0.0.1:8848/nacos",
+//				User:             "nacos",
+//				Password:         "nacos",
+//				UseNamespaceName: "public",
+//			},
+//		},
+//	}
+//}
 
-type ApplicationConfig struct {
-	Properties map[string]string
-	UseServer  string
-	Servers    []NacosContext
-}
 type NacosContext struct {
 	Name             string
 	Url              string
@@ -96,56 +49,127 @@ type NacosContext struct {
 	UseNamespaceName string
 }
 
-func (c *ApplicationConfig) GetNacosContexts() []NacosContext {
-	return c.Servers
-}
-func (c *ApplicationConfig) GetStringProperty(key string, defaultValue string) string {
-	if len(c.Properties[key]) == 0 {
-		return defaultValue
-	}
-	return c.Properties[key]
-}
-func (c *ApplicationConfig) GetIntProperty(key string, defaultValue string) int {
-	value, err := strconv.Atoi(c.GetStringProperty(key, defaultValue))
+func (c *configApi) GetNacosContexts() (_ []NacosContext, err error) {
+	rows, err := c.db.Query(`select name, url, username, password, namespace, namespace_name from nacos_context`)
 	if err != nil {
-		value, _ = strconv.Atoi(defaultValue)
-		return value
+		return nil, err
 	}
-	return value
-}
-func (c *ApplicationConfig) GetBoolProperty(key string, defaultValue string) bool {
-	value, err := strconv.ParseBool(c.GetStringProperty(key, defaultValue))
-	if err != nil {
-		value, _ = strconv.ParseBool(defaultValue)
-		return value
+	defer func(rows *sql.Rows) {
+		closeErr := rows.Close()
+		if closeErr != nil {
+			err = closeErr
+		}
+	}(rows)
+	var contexts []NacosContext
+	for rows.Next() {
+		var name, url, username, password, namespace, namespaceName string
+		if err = rows.Scan(&name, &url, &username, &password, &namespace, &namespaceName); err != nil {
+			return nil, err
+		}
+		contexts = append(contexts, NacosContext{
+			Name:             name,
+			Url:              url,
+			User:             username,
+			Password:         password,
+			UseNamespace:     namespace,
+			UseNamespaceName: namespaceName,
+		})
 	}
-	return value
-}
-func (c *ApplicationConfig) SetProperty(key string, value string) error {
-	c.Properties[key] = value
-	return SaveApplicationConfig(c)
+	if err = rows.Err(); err != nil {
+		return nil, err
+	}
+	return contexts, nil
 }
 
-func (c *ApplicationConfig) GetNacosContext() NacosContext {
-	var serverConfig NacosContext
-	for _, server := range c.Servers {
-		if strings.EqualFold(server.Name, c.UseServer) {
-			serverConfig = server
+func (c *configApi) GetProperty(key string, defaultValue string) (_ string, err error) {
+	rows, err := c.db.Query(`select key, value from system_config where key = ?`, key)
+	if err != nil {
+		return defaultValue, err
+	}
+	defer func(rows *sql.Rows) {
+		closeErr := rows.Close()
+		if closeErr != nil {
+			err = closeErr
+		}
+	}(rows)
+	if rows.Next() {
+		columns, err := rows.Columns()
+		if err != nil {
+			return defaultValue, err
+		}
+		return columns[0], nil
+	}
+	return defaultValue, nil
+}
+func (c *configApi) GetIntProperty(key string, defaultValue string) (int, error) {
+	stringValue, err := c.GetProperty(key, defaultValue)
+	if err != nil {
+		return 0, err
+	}
+	intValue, err := strconv.Atoi(stringValue)
+	if err != nil {
+		return 0, err
+	}
+	return intValue, nil
+}
+func (c *configApi) GetBoolProperty(key string, defaultValue string) (bool, error) {
+	stringValue, err := c.GetProperty(key, defaultValue)
+	if err != nil {
+		return false, err
+	}
+	boolValue, err := strconv.ParseBool(stringValue)
+	if err != nil {
+		return false, err
+	}
+	return boolValue, nil
+}
+func (c *configApi) SetProperty(key string, value string) (err error) {
+	dbValue, err := c.GetProperty(key, "nil")
+	if dbValue != "nil" {
+		// 修改
+		_, err := c.db.Exec(`update system_config set value = ? where key = ?`, value, key)
+		if err != nil {
+			return err
+		}
+	} else {
+		// 新增
+		_, err := c.db.Exec(`insert into system_config(key, value) values (?, ?)`, key, value)
+		if err != nil {
+			return err
 		}
 	}
-	return serverConfig
+	return nil
 }
 
-func (c *ApplicationConfig) SetNacosContext(name string) error {
-	c.UseServer = name
-	return SaveApplicationConfig(c)
-}
-func (c *ApplicationConfig) SetNacosContextNamespace(namespace string, namespaceName string) error {
-	for i := range c.Servers {
-		if strings.EqualFold(c.Servers[i].Name, c.UseServer) {
-			c.Servers[i].UseNamespace = namespace
-			c.Servers[i].UseNamespaceName = namespaceName
+func (c *configApi) GetNacosContext() (NacosContext, error) {
+	contexts, err := c.GetNacosContexts()
+	if err != nil {
+		return NacosContext{}, err
+	}
+	activeContextName, err := c.GetProperty("active.nacos.context", "")
+	if err != nil {
+		return NacosContext{}, err
+	}
+	for _, context := range contexts {
+		if context.Name == activeContextName {
+			return context, nil
 		}
 	}
-	return SaveApplicationConfig(c)
+	return NacosContext{}, errors.New("not found active nacos context")
+}
+
+func (c *configApi) SetNacosContext(name string) error {
+	return c.SetProperty("active.nacos.context", name)
+}
+func (c *configApi) SetNacosContextNamespace(namespace string, namespaceName string) error {
+	activeContext, err := c.GetNacosContext()
+	if err != nil {
+		return err
+	}
+	_, err = c.db.Exec(`update nacos_context set namespace = ?, namespace_name = ? where name = ?`,
+		namespace, namespaceName, activeContext.Name)
+	if err != nil {
+		return err
+	}
+	return nil
 }

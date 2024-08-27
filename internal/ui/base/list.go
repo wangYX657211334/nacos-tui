@@ -112,26 +112,30 @@ func (m *PageListModel) KeyMap() map[*key.Binding]func() (tea.Cmd, error) {
 	return map[*key.Binding]func() (tea.Cmd, error){}
 }
 
-func GetPageSize(repo repository.Repository) int {
+func GetPageSize(repo repository.Repository) (int, error) {
 	return repo.GetIntProperty(PageSize, DefaultPageSize)
 }
 func (m *PageListModel) load(pageNum int) error {
-	if m.lastPageNum == pageNum && m.lastPageSize == GetPageSize(m.repo) {
+	pageSize, err := GetPageSize(m.repo)
+	if err != nil {
+		return err
+	}
+	if m.lastPageNum == pageNum && m.lastPageSize == pageSize {
 		return nil
 	}
 	m.lastPageNum = pageNum
-	m.lastPageSize = GetPageSize(m.repo)
-	rows, totalCount, err := m.extend.Load(pageNum, GetPageSize(m.repo))
+	m.lastPageSize = pageSize
+	rows, totalCount, err := m.extend.Load(pageNum, pageSize)
 	if err != nil {
 		return err
 	}
 
 	m.ResetColumns(rows)
 	m.Model.SetRows(rows)
-	m.Model.SetHeight(GetPageSize(m.repo))
+	m.Model.SetHeight(pageSize)
 
 	m.paginator.Page = pageNum - 1
-	m.paginator.PerPage = GetPageSize(m.repo)
+	m.paginator.PerPage = pageSize
 	m.paginator.SetTotalPages(totalCount)
 	return nil
 }
@@ -145,17 +149,21 @@ func (m *PageListModel) Reload() error {
 }
 
 func (m *PageListModel) Reset() error {
-	rows, totalCount, err := m.extend.Load(1, GetPageSize(m.repo))
+	pageSize, err := GetPageSize(m.repo)
+	if err != nil {
+		return err
+	}
+	rows, totalCount, err := m.extend.Load(1, pageSize)
 	if err != nil {
 		return err
 	}
 	m.ResetColumns(rows)
 	m.Model.SetRows(rows)
-	m.Model.SetHeight(GetPageSize(m.repo))
+	m.Model.SetHeight(pageSize)
 
 	m.lastPageNum = 1
 	m.paginator.Page = 0
-	m.paginator.PerPage = GetPageSize(m.repo)
+	m.paginator.PerPage = pageSize
 	m.paginator.SetTotalPages(totalCount)
 	return nil
 }

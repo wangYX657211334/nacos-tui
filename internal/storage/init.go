@@ -32,6 +32,18 @@ func NewConnection() (db *sql.DB, err error) {
         error_message TEXT,
         time INTEGER
     );
+    CREATE TABLE IF NOT EXISTS nacos_context (
+        name varchar(32) PRIMARY KEY,
+        url varchar(256),
+        username varchar(256),
+        password varchar(256),
+        namespace varchar(256),
+        namespace_name varchar(256)
+    );
+    CREATE TABLE IF NOT EXISTS system_config (
+        key varchar(32) PRIMARY KEY,
+        value varchar(256)
+    );
     `
 	_, err = db.Exec(createTableSQL)
 	if err != nil {

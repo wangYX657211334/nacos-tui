@@ -41,10 +41,7 @@ func main() {
 			log.Panic(err)
 		}
 	}(db)
-	homeModel, err := home.NewHomeModel(db)
-	if err != nil {
-		log.Panic(err)
-	}
+	homeModel := home.NewHomeModel(db)
 	program := tea.NewProgram(homeModel, tea.WithAltScreen())
 	event.RegisterSubscribe(event.RefreshScreenEvent, func(a ...any) {
 		program.Send(base.RefreshScreenMsg)

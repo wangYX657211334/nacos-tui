@@ -32,9 +32,13 @@ type DetailModel struct {
 	content string
 }
 
-func NewDetailModel(repo repository.Repository, content string) *DetailModel {
+func NewDetailModel(repo repository.Repository, content string) (*DetailModel, error) {
+	width, height, err := getSize(repo, content)
+	if err != nil {
+		return nil, err
+	}
 	m := &DetailModel{
-		Model:      viewport.New(getSize(repo, content)),
+		Model:      viewport.New(width, height),
 		KeyHelpApi: NewKeyHelpApi(CopyKeyMap),
 		CommandApi: NewCommandApi(
 			NewCommand(*NewSuggestionBuilder().
@@ -52,18 +56,26 @@ func NewDetailModel(repo repository.Repository, content string) *DetailModel {
 	}
 	m.SetContent(content)
 	m.content = content
-	return m
+	return m, nil
 }
 
-func getSize(repo repository.Repository, content string) (int, int) {
+func getSize(repo repository.Repository, content string) (int, int, error) {
 	height := strings.Count(content, "\n") + 1
-	if height > repo.GetIntProperty(DetailHeightMaxSize, DefaultHeightSize) {
-		height = repo.GetIntProperty(DetailHeightMaxSize, DefaultHeightSize)
+	heightMaxSize, err := repo.GetIntProperty(DetailHeightMaxSize, DefaultHeightSize)
+	if err != nil {
+		return 0, 0, err
 	}
-	return repo.GetIntProperty(DetailWidthSize, DefaultWidthSize), height
+	if height > heightMaxSize {
+		height = heightMaxSize
+	}
+	width, err := repo.GetIntProperty(DetailWidthSize, DefaultWidthSize)
+	if err != nil {
+		return 0, 0, err
+	}
+	return width, height, nil
 }
 
-func GetDetailWidthSize(repo repository.Repository) int {
+func GetDetailWidthSize(repo repository.Repository) (int, error) {
 	return repo.GetIntProperty(DetailWidthSize, DefaultWidthSize)
 }
 
@@ -80,7 +92,11 @@ func (m *DetailModel) Update(msg tea.Msg) (tea.Cmd, error) {
 			return nil, nil
 		}
 	}
-	m.Model.Width, m.Model.Height = getSize(m.repo, m.content)
+	var err error
+	m.Model.Width, m.Model.Height, err = getSize(m.repo, m.content)
+	if err != nil {
+		return nil, err
+	}
 	m.Model, cmd = m.Model.Update(msg)
 	return cmd, nil
 }

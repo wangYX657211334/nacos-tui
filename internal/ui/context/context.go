@@ -45,7 +45,11 @@ func (m *NacosContextModel) Update(msg tea.Msg) (tea.Cmd, error) {
 }
 
 func (m *NacosContextModel) Load(_ int, _ int) (rows []table.Row, totalCount int, err error) {
-	for _, server := range m.repo.GetNacosContexts() {
+	contexts, err := m.repo.GetNacosContexts()
+	if err != nil {
+		return nil, 0, err
+	}
+	for _, server := range contexts {
 		rows = append(rows, table.Row{server.Name, server.Url, server.User})
 	}
 	totalCount = len(rows)

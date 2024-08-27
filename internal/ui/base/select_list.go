@@ -56,25 +56,31 @@ func (d itemDelegate) Render(w io.Writer, m list.Model, index int, listItem list
 	_, _ = fmt.Fprint(w, fn(str))
 }
 
-func NewSelectListModel(repo repository.Repository, items []SelectItem, selectHandle func(item *SelectItem)) *SelectListModel {
+func NewSelectListModel(repo repository.Repository, items []SelectItem, selectHandle func(item *SelectItem)) (*SelectListModel, error) {
 	var listItems []list.Item
 	for _, item := range items {
 		listItems = append(listItems, &item)
 	}
-	width := GetDetailWidthSize(repo)
-	height := GetPageSize(repo) + 1
+	width, err := GetDetailWidthSize(repo)
+	if err != nil {
+		return nil, err
+	}
+	height, err := GetPageSize(repo)
+	if err != nil {
+		return nil, err
+	}
 	m := &SelectListModel{
-		Model:        list.New(listItems, itemDelegate{}, width, height),
+		Model:        list.New(listItems, itemDelegate{}, width, height+1),
 		KeyHelpApi:   NewKeyHelpApi(EnterKeyMap),
 		CommandApi:   EmptyCommandHandler(),
 		width:        width,
-		height:       height,
+		height:       height + 1,
 		selectHandle: selectHandle,
 	}
 	m.SetShowHelp(false)
 	m.SetShowFilter(false)
 	m.SetShowTitle(false)
-	return m
+	return m, nil
 }
 func (m *SelectListModel) Init() tea.Cmd {
 	return nil
