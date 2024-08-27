@@ -5,6 +5,7 @@ import (
 	_ "github.com/glebarez/go-sqlite"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 func NewConnection() (db *sql.DB, err error) {
@@ -44,8 +45,13 @@ func NewConnection() (db *sql.DB, err error) {
         key varchar(32) PRIMARY KEY,
         value varchar(256)
     );
-    `
+	`
 	_, err = db.Exec(createTableSQL)
+	if err != nil {
+		return nil, err
+	}
+	sevenDayAgo := time.Now().UnixMilli() - (time.Hour * 24 * 7).Milliseconds()
+	_, err = db.Exec("DELETE FROM audit WHERE time < ?", sevenDayAgo)
 	if err != nil {
 		return nil, err
 	}
