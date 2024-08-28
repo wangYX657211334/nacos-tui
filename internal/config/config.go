@@ -69,7 +69,7 @@ func (c *configApi) GetNacosContexts() (_ []NacosContext, err error) {
 }
 
 func (c *configApi) GetProperty(key string, defaultValue string) (_ string, err error) {
-	rows, err := c.db.Query(`select key, value from system_config where key = ?`, key)
+	rows, err := c.db.Query(`select value from system_config where key = ?`, key)
 	if err != nil {
 		return defaultValue, err
 	}
@@ -80,11 +80,12 @@ func (c *configApi) GetProperty(key string, defaultValue string) (_ string, err 
 		}
 	}(rows)
 	if rows.Next() {
-		columns, err := rows.Columns()
+		var value string
+		err := rows.Scan(&value)
 		if err != nil {
 			return defaultValue, err
 		}
-		return columns[0], nil
+		return value, nil
 	}
 	return defaultValue, nil
 }

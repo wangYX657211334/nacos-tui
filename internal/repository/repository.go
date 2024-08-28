@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"github.com/wangYX657211334/nacos-tui/internal/config"
 	"github.com/wangYX657211334/nacos-tui/pkg/nacos"
+	"log"
 )
 
 type Repository interface {
@@ -23,7 +24,10 @@ func NewRepository(db *sql.DB) Repository {
 	appConfig := config.NewApi(db)
 	r.configApi = appConfig
 	r.nacosApi = nacos.NewApi(func() (url string, username string, password string, namespace string) {
-		ctx, _ := appConfig.GetNacosContext()
+		ctx, err := appConfig.GetNacosContext()
+		if err != nil {
+			log.Panic(err)
+		}
 		return ctx.Url, ctx.User, ctx.Password, ctx.UseNamespace
 	}, db)
 	return r
