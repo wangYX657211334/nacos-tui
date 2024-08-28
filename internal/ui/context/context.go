@@ -95,5 +95,27 @@ func (m *NacosContextModel) KeyMap() map[*key.Binding]func() (tea.Cmd, error) {
 				}
 			}), nil
 		},
+		&base.CopyKeyMap: func() (cmd tea.Cmd, err error) {
+			row := m.SelectedRow()
+			if row != nil {
+				for _, context := range m.contexts {
+					if context.Name == row[0] {
+						return util.EditStructBySystemEditor(context.Name+".yaml", context, func(ok bool, newContext config.NacosContext, err error) {
+							if err != nil {
+								event.Publish(event.ApplicationMessageEvent, "报错啦: "+err.Error())
+								return
+							}
+							if ok {
+								if err = m.repo.AddNacosContext(newContext); err != nil {
+									event.Publish(event.ApplicationMessageEvent, "报错啦: "+err.Error())
+									return
+								}
+							}
+						}), nil
+					}
+				}
+			}
+			return
+		},
 	}
 }
