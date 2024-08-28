@@ -58,16 +58,18 @@ func (m *NacosContextModel) KeyMap() map[*key.Binding]func() (tea.Cmd, error) {
 			if row != nil {
 				for _, context := range m.contexts {
 					if context.Name == row[0] {
-						ok, newContext, err := util.EditStructBySystemEditor(context.Name+".yaml", context)
-						if err != nil {
-							return nil, err
-						}
-						if ok {
-							if err = m.repo.UpdateNacosContext(newContext); err != nil {
-								return nil, err
+						return util.EditStructBySystemEditor(context.Name+".yaml", context, func(ok bool, newContext config.NacosContext, err error) {
+							if err != nil {
+								event.Publish(event.ApplicationMessageEvent, "报错啦: "+err.Error())
+								return
 							}
-						}
-						return base.RefreshScreenCmd, nil
+							if ok {
+								if err = m.repo.UpdateNacosContext(newContext); err != nil {
+									event.Publish(event.ApplicationMessageEvent, "报错啦: "+err.Error())
+									return
+								}
+							}
+						}), nil
 					}
 				}
 			}
@@ -80,16 +82,18 @@ func (m *NacosContextModel) KeyMap() map[*key.Binding]func() (tea.Cmd, error) {
 				User:             "nacos",
 				Password:         "nacos",
 			}
-			ok, newContext, err := util.EditStructBySystemEditor(context.Name+".yaml", context)
-			if err != nil {
-				return nil, err
-			}
-			if ok {
-				if err = m.repo.AddNacosContext(newContext); err != nil {
-					return nil, err
+			return util.EditStructBySystemEditor(context.Name+".yaml", context, func(ok bool, newContext config.NacosContext, err error) {
+				if err != nil {
+					event.Publish(event.ApplicationMessageEvent, "报错啦: "+err.Error())
+					return
 				}
-			}
-			return base.RefreshScreenCmd, nil
+				if ok {
+					if err = m.repo.AddNacosContext(newContext); err != nil {
+						event.Publish(event.ApplicationMessageEvent, "报错啦: "+err.Error())
+						return
+					}
+				}
+			}), nil
 		},
 	}
 }

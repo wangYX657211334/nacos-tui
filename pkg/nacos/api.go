@@ -74,7 +74,7 @@ type Api interface {
 	GetNamespaces() (*NamespacesResponse, error)
 	GetConfigs(dataId string, group string, pageNo int, pageSize int) (*ConfigsResponse, error)
 	GetConfig(dataId string, group string) (*ConfigResponse, error)
-	UpdateConfig(dataId string, group string, update func(*ConfigResponse) (bool, error)) (bool, error)
+	UpdateConfig(data *ConfigResponse) (bool, error)
 	CloneConfigs(targetNamespace string, policy string, body []ConfigCloneItem) (*ConfigCloneResponse, error)
 	DeleteConfig(ids ...string) (*ConfigDeleteResponse, error)
 	GetConfigListener(dataId string, group string) (*ConfigListenerModel, error)
@@ -183,15 +183,7 @@ func (n *api) DeleteConfig(ids ...string) (*ConfigDeleteResponse, error) {
 	})
 }
 
-func (n *api) UpdateConfig(dataId string, group string, update func(*ConfigResponse) (bool, error)) (bool, error) {
-	configRes, err := n.GetConfig(dataId, group)
-	if err != nil {
-		return false, err
-	}
-	updateAble, err := update(configRes)
-	if !updateAble || err != nil {
-		return false, err
-	}
+func (n *api) UpdateConfig(configRes *ConfigResponse) (bool, error) {
 	res, err := n.httpClient.PostForm(n.url+fmt.Sprintf("/v1/cs/configs?accessToken=%s", n.token), url.Values{
 		"id":               {configRes.Id},
 		"dataId":           {configRes.DataId},
