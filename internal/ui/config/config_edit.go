@@ -12,7 +12,7 @@ type NacosConfigEdit struct {
 	repo repository.Repository
 }
 
-func (m *NacosConfigEdit) EditConfigContent(dataId string, group string, editCallBack func() error) (tea.Cmd, error) {
+func (m *NacosConfigEdit) EditConfigContent(dataId string, group string) (tea.Cmd, error) {
 	configRes, err := m.repo.GetConfig(dataId, group)
 	if err != nil {
 		return nil, err
@@ -29,14 +29,12 @@ func (m *NacosConfigEdit) EditConfigContent(dataId string, group string, editCal
 				event.Publish(event.ApplicationMessageEvent, "报错啦: "+err.Error())
 			}
 			if res {
-				err := editCallBack()
-				if err != nil {
-					event.Publish(event.ApplicationMessageEvent, "报错啦: "+err.Error())
-				}
 				event.Publish(event.ApplicationMessageEvent, "配置已更新")
 			} else {
-				event.Publish(event.ApplicationMessageEvent, "未修改，无需更新")
+				event.Publish(event.ApplicationMessageEvent, "配置更新失败")
 			}
+		} else {
+			event.Publish(event.ApplicationMessageEvent, "未修改，无需更新")
 		}
 	}), nil
 }

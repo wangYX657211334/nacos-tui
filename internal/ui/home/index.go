@@ -35,6 +35,7 @@ var (
 			}),
 		base.NewCommand(*base.NewSuggestionBuilder().Simple("context ").Regexp("\\w+", "dev"),
 			func(repo repository.Repository, param []string) error {
+				defer base.BackRoute()
 				defer repo.ResetInitialization()
 				return repo.SetActiveNacosContext(param[2])
 			}),

@@ -94,7 +94,7 @@ func (m *NacosConfigListModel) KeyMap() map[*key.Binding]func() (tea.Cmd, error)
 		&base.EditKeyMap: func() (cmd tea.Cmd, err error) {
 			row := m.SelectedRow()
 			if row != nil {
-				return m.configEdit.EditConfigContent(row[1], row[2], m.Reload)
+				return m.configEdit.EditConfigContent(row[1], row[2])
 			}
 			return
 		},
