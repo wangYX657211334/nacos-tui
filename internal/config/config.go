@@ -9,7 +9,9 @@ import (
 type Api interface {
 	GetNacosContexts() ([]NacosContext, error)
 	GetNacosContext() (NacosContext, error)
-	SetNacosContext(name string) error
+	AddNacosContext(context NacosContext) error
+	UpdateNacosContext(context NacosContext) error
+	SetActiveNacosContext(name string) error
 	SetNacosContextNamespace(namespace string, namespaceName string) error
 	GetProperty(key string, defaultValue string) (string, error)
 	GetIntProperty(key string, defaultValue string) (int, error)
@@ -24,21 +26,6 @@ type configApi struct {
 func NewApi(db *sql.DB) Api {
 	return &configApi{db: db}
 }
-
-//func DefaultApplicationConfig() ApplicationConfig {
-//	return ApplicationConfig{
-//		UseServer: "local",
-//		Servers: []NacosContext{
-//			{
-//				Name:             "local",
-//				Url:              "http://127.0.0.1:8848/nacos",
-//				User:             "nacos",
-//				Password:         "nacos",
-//				UseNamespaceName: "public",
-//			},
-//		},
-//	}
-//}
 
 type NacosContext struct {
 	Name             string
@@ -158,7 +145,26 @@ func (c *configApi) GetNacosContext() (NacosContext, error) {
 	return NacosContext{}, errors.New("not found active nacos context")
 }
 
-func (c *configApi) SetNacosContext(name string) error {
+func (c *configApi) UpdateNacosContext(context NacosContext) error {
+	_, err := c.db.Exec(`update nacos_context 
+set url = ?, username = ?, password = ?, namespace = ?, namespace_name = ? 
+where name = ?`, context.Url, context.User, context.Password, context.UseNamespace, context.UseNamespaceName, context.Name)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *configApi) AddNacosContext(context NacosContext) error {
+	_, err := c.db.Exec(`insert into nacos_context(name, url, username, password, namespace, namespace_name) values (?, ?, ?, ?, ?, ?)`,
+		context.Name, context.Url, context.User, context.Password, context.UseNamespace, context.UseNamespaceName)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c *configApi) SetActiveNacosContext(name string) error {
 	return c.SetProperty("active.nacos.context", name)
 }
 func (c *configApi) SetNacosContextNamespace(namespace string, namespaceName string) error {

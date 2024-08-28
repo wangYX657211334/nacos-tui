@@ -7,6 +7,7 @@ var (
 	CommandKeyMap  = key.NewBinding(key.WithKeys(":"), key.WithHelp(":", "command"))
 	EscKeyMap      = key.NewBinding(key.WithKeys("esc"), key.WithHelp("esc", "return"))
 	EditKeyMap     = key.NewBinding(key.WithKeys("e"), key.WithHelp("e", "edit"))
+	AddKeyMap      = key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "add"))
 	FilterKeyMap   = key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "filter"))
 	EnterKeyMap    = key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "ok"))
 	ShowJsonKeyMap = key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "show json"))

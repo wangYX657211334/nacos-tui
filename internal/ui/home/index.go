@@ -36,7 +36,7 @@ var (
 		base.NewCommand(*base.NewSuggestionBuilder().Simple("context ").Regexp("\\w+", "dev"),
 			func(repo repository.Repository, param []string) error {
 				defer repo.ResetInitialization()
-				return repo.SetNacosContext(param[2])
+				return repo.SetActiveNacosContext(param[2])
 			}),
 		base.NewCommand(*base.NewSuggestionBuilder().Simple("namespace"),
 			func(repo repository.Repository, param []string) error {

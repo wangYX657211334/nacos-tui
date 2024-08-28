@@ -7,6 +7,7 @@ import (
 
 var (
 	RefreshScreenMsg = "RefreshScreenMsg"
+	RefreshScreenCmd = func() tea.Msg { return RefreshScreenMsg }
 )
 
 var (
