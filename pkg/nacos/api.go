@@ -33,13 +33,16 @@ var id = createId()
 type LoggerRoundTripper struct {
 	BaseRoundTripper http.RoundTripper
 	db               *sql.DB
-	loginParam       func() (url string, username string, password string, namespace string)
+	loginParam       func() (url string, username string, password string, namespace string, err error)
 }
 
 func (l *LoggerRoundTripper) RoundTrip(req *http.Request) (*http.Response, error) {
-	baseUrl, username, password, namespace := l.loginParam()
 	var requestDupm, responseDupm string
 	errMessage := errors.New("")
+	baseUrl, username, password, namespace, err := l.loginParam()
+	if err != nil {
+		errMessage = errors.Join(errMessage, err)
+	}
 	dumpReq, err := httputil.DumpRequest(req, true)
 	if err != nil {
 		errMessage = errors.Join(errMessage, err)
@@ -89,7 +92,7 @@ type api struct {
 	url         string
 	username    string
 	password    string
-	loginParam  func() (url string, username string, password string, namespace string)
+	loginParam  func() (url string, username string, password string, namespace string, err error)
 	token       string
 	namespace   string
 	initialized bool
@@ -97,7 +100,7 @@ type api struct {
 	httpClient  *http.Client
 }
 
-func NewApi(loginParam func() (url string, username string, password string, namespace string), db *sql.DB) Api {
+func NewApi(loginParam func() (url string, username string, password string, namespace string, err error), db *sql.DB) Api {
 	return &api{
 		loginParam:  loginParam,
 		initialized: false,
@@ -123,8 +126,11 @@ func (n *api) state() (*StateResponse, error) {
 
 const loginUrl = "/v1/auth/login"
 
-func (n *api) refresh() error {
-	n.url, n.username, n.password, n.namespace = n.loginParam()
+func (n *api) refresh() (err error) {
+	n.url, n.username, n.password, n.namespace, err = n.loginParam()
+	if err != nil {
+		return err
+	}
 	state, err := n.state()
 	if err != nil {
 		return err
