@@ -102,7 +102,15 @@ func (m *PageListModel[T]) GetData() []T {
 func (m *PageListModel[T]) SetShowPage(show bool) {
 	m.showPage = show
 }
-
+func (m *PageListModel[T]) Selected() (bool, T) {
+	row := m.SelectedRow()
+	if row != nil {
+		return true, m.data[m.Cursor()]
+	} else {
+		var res T
+		return false, res
+	}
+}
 func (m *PageListModel[T]) Update(msg tea.Msg) (tea.Cmd, error) {
 	if msg == RefreshScreenMsg {
 		return nil, m.Reload()

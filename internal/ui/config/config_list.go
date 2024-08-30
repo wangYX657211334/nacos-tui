@@ -60,34 +60,30 @@ func (m *NacosConfigListModel) KeyMap() map[*key.Binding]func() (tea.Cmd, error)
 			return nil, nil
 		},
 		&base.EnterKeyMap: func() (cmd tea.Cmd, err error) {
-			row := m.SelectedRow()
-			if row != nil {
-				config, err := m.repo.GetConfig(row[1], row[2])
-				if err != nil {
-					return nil, err
-				}
-				base.Route("/**/view", config.Content)
+			ok, row := m.Selected()
+			if ok {
+				base.Route("/**/view", row.Content)
 			}
 			return
 		},
 		&ListenersKeyMap: func() (cmd tea.Cmd, err error) {
-			row := m.SelectedRow()
-			if row != nil {
-				base.Route("/config/listener", row[1], row[2])
+			ok, row := m.Selected()
+			if ok {
+				base.Route("/config/listener", row.DataId, row.Group)
 			}
 			return
 		},
 		&HistoriesKeyMap: func() (cmd tea.Cmd, err error) {
-			row := m.SelectedRow()
-			if row != nil {
-				base.Route("/config/history", row[1], row[2])
+			ok, row := m.Selected()
+			if ok {
+				base.Route("/config/history", row.DataId, row.Group)
 			}
 			return
 		},
 		&base.EditKeyMap: func() (cmd tea.Cmd, err error) {
-			row := m.SelectedRow()
-			if row != nil {
-				return m.configEdit.EditConfigContent(row[1], row[2])
+			ok, row := m.Selected()
+			if ok {
+				return m.configEdit.EditConfigContent(row.DataId, row.Group)
 			}
 			return
 		},

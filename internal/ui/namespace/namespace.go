@@ -34,12 +34,15 @@ func (m *NacosNamespaceModel) Update(msg tea.Msg) (tea.Cmd, error) {
 	case tea.KeyMsg:
 		switch {
 		case key.Matches(msg, base.EnterKeyMap):
-			err := m.repo.SetNacosContextNamespace(m.SelectedRow()[0], m.SelectedRow()[1])
-			if err != nil {
-				return nil, err
+			ok, row := m.Selected()
+			if ok {
+				err := m.repo.SetNacosContextNamespace(row.Namespace, row.NamespaceShowName)
+				if err != nil {
+					return nil, err
+				}
+				m.repo.ResetInitialization()
+				event.Publish(event.RouteEvent, "/config")
 			}
-			m.repo.ResetInitialization()
-			event.Publish(event.RouteEvent, "/config")
 			return nil, nil
 		}
 	}

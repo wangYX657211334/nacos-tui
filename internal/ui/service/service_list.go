@@ -53,16 +53,16 @@ func (m *NacosServiceListModel) KeyMap() map[*key.Binding]func() (tea.Cmd, error
 			return
 		},
 		&base.EnterKeyMap: func() (tea.Cmd, error) {
-			row := m.SelectedRow()
-			if row != nil {
-				base.Route("/service/instance", row[1], row[2])
+			ok, row := m.Selected()
+			if ok {
+				base.Route("/service/instance", row.Name, row.GroupName)
 			}
 			return nil, nil
 		},
 		&SubscribersKeyMap: func() (tea.Cmd, error) {
-			row := m.SelectedRow()
-			if row != nil {
-				base.Route("/service/subscriber", row[1], row[2])
+			ok, row := m.Selected()
+			if ok {
+				base.Route("/service/subscriber", row.Name, row.GroupName)
 			}
 			return nil, nil
 		},
