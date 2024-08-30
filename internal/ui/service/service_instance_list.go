@@ -7,13 +7,21 @@ import (
 	"strconv"
 
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/table"
 	"github.com/wangYX657211334/nacos-tui/internal/ui/base"
 	"github.com/wangYX657211334/nacos-tui/pkg/nacos"
 )
 
+type InstanceItem struct {
+	Index           string
+	ClusterName     string
+	Ip              string
+	Port            string
+	Healthy         string
+	Enabled         string
+	MetadataVersion string
+}
 type NacosServiceInstanceListModel struct {
-	base.PageListModel
+	base.PageListModel[InstanceItem]
 	repo      repository.Repository
 	dataId    string
 	group     string
@@ -26,32 +34,32 @@ func NewNacosServiceInstanceListModel(repo repository.Repository, dataId, group 
 		dataId: dataId,
 		group:  group,
 	}
-	m.PageListModel = base.NewPageListModel(repo, []table.Column{
-		{Title: "Index", Width: 5},
-		{Title: "ClusterName", Width: 15},
-		{Title: "Ip", Width: 15},
-		{Title: "Port", Width: 10},
-		{Title: "Healthy", Width: 10},
-		{Title: "Enabled", Width: 10},
-		{Title: "Metadata.version", Width: 20},
+	m.PageListModel = base.NewPageListModel[InstanceItem](repo, []base.Column[InstanceItem]{
+		{Title: "Index", Width: 5, Show: func(index int, data InstanceItem) string { return data.Index }},
+		{Title: "ClusterName", Width: 15, Show: func(index int, data InstanceItem) string { return data.ClusterName }},
+		{Title: "Ip", Width: 15, Show: func(index int, data InstanceItem) string { return data.Ip }},
+		{Title: "Port", Width: 10, Show: func(index int, data InstanceItem) string { return data.Port }},
+		{Title: "Healthy", Width: 10, Show: func(index int, data InstanceItem) string { return data.Healthy }},
+		{Title: "Enabled", Width: 10, Show: func(index int, data InstanceItem) string { return data.Enabled }},
+		{Title: "Metadata.version", Width: 20, Show: func(index int, data InstanceItem) string { return data.MetadataVersion }},
 	}, m)
 	m.PageListModel.SetShowPage(false)
 	return m
 }
 
-func (m *NacosServiceInstanceListModel) Load(_ int, _ int) ([]table.Row, int, error) {
+func (m *NacosServiceInstanceListModel) Load(_ int, _ int) ([]InstanceItem, int, error) {
 	res, err := m.repo.GetService(m.dataId, m.group)
 	if err != nil {
 		return nil, 0, err
 	}
-	var rows []table.Row
+	var data []InstanceItem
 	for _, cluster := range res.Clusters {
 		instances, err := m.repo.GetInstances(m.dataId, m.group, cluster.Name)
 		if err != nil {
 			return nil, 0, err
 		}
 		for index, instance := range instances.List {
-			rows = append(rows, table.Row{
+			data = append(data, InstanceItem{
 				strconv.Itoa(index + 1),
 				cluster.Name, instance.Ip,
 				strconv.FormatUint(uint64(instance.Port), 10),
@@ -62,7 +70,7 @@ func (m *NacosServiceInstanceListModel) Load(_ int, _ int) ([]table.Row, int, er
 			m.instances = append(m.instances, instance)
 		}
 	}
-	return rows, len(rows), nil
+	return data, len(data), nil
 }
 
 func (m *NacosServiceInstanceListModel) KeyMap() map[*key.Binding]func() (tea.Cmd, error) {

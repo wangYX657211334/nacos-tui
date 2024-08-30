@@ -17,22 +17,23 @@ var (
 	DefaultPageSize = "20"
 )
 
-type Extend interface {
-	Load(pageNum int, pageSize int) (rows []table.Row, totalCount int, err error)
+type Extend[T any] interface {
+	Load(pageNum int, pageSize int) (list []T, totalCount int, err error)
 	KeyMap() map[*key.Binding]func() (tea.Cmd, error)
 }
 
-type PageListModel struct {
+type PageListModel[T any] struct {
 	table.Model
 	CommandApi
 	KeyHelpApi
 	repo         repository.Repository
-	cols         []table.Column
+	cols         []Column[T]
 	paginator    paginator.Model
 	showPage     bool
 	lastPageNum  int
 	lastPageSize int
-	extend       Extend
+	data         []T
+	extend       Extend[T]
 }
 
 func TableStyle() table.Styles {
@@ -47,7 +48,13 @@ func TableStyle() table.Styles {
 	return tableStyle
 }
 
-func NewPageListModel(repo repository.Repository, cols []table.Column, extend Extend) PageListModel {
+type Column[T any] struct {
+	Title string
+	Width int
+	Show  func(index int, data T) string
+}
+
+func NewPageListModel[T any](repo repository.Repository, cols []Column[T], extend Extend[T]) PageListModel[T] {
 	var keys []key.Binding
 	for k := range extend.KeyMap() {
 		keys = append(keys, *k)
@@ -56,9 +63,10 @@ func NewPageListModel(repo repository.Repository, cols []table.Column, extend Ex
 	p.Type = paginator.Dots
 	p.ActiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "235", Dark: "252"}).Render("•")
 	p.InactiveDot = lipgloss.NewStyle().Foreground(lipgloss.AdaptiveColor{Light: "250", Dark: "238"}).Render("•")
-	return PageListModel{
+
+	return PageListModel[T]{
 		Model: table.New(
-			table.WithColumns(cols),
+			table.WithColumns(getTableColumns(cols)),
 			table.WithFocused(true),
 			table.WithStyles(TableStyle()),
 		),
@@ -79,11 +87,23 @@ func NewPageListModel(repo repository.Repository, cols []table.Column, extend Ex
 	}
 }
 
-func (m *PageListModel) SetShowPage(show bool) {
+func getTableColumns[T any](cols []Column[T]) []table.Column {
+	var tableColumns []table.Column
+	for _, col := range cols {
+		tableColumns = append(tableColumns, table.Column{Title: col.Title, Width: col.Width})
+	}
+	return tableColumns
+}
+
+func (m *PageListModel[T]) GetData() []T {
+	return m.data
+}
+
+func (m *PageListModel[T]) SetShowPage(show bool) {
 	m.showPage = show
 }
 
-func (m *PageListModel) Update(msg tea.Msg) (tea.Cmd, error) {
+func (m *PageListModel[T]) Update(msg tea.Msg) (tea.Cmd, error) {
 	if msg == RefreshScreenMsg {
 		return nil, m.Reload()
 	}
@@ -100,7 +120,7 @@ func (m *PageListModel) Update(msg tea.Msg) (tea.Cmd, error) {
 	return nil, m.load(m.paginator.Page + 1)
 }
 
-func (m *PageListModel) View() (v string) {
+func (m *PageListModel[T]) View() (v string) {
 	v += TableBorderStyle.Render(m.Model.View()) + "\n"
 	if m.showPage {
 		v += m.paginator.View() + "\n"
@@ -108,14 +128,14 @@ func (m *PageListModel) View() (v string) {
 	return
 }
 
-func (m *PageListModel) KeyMap() map[*key.Binding]func() (tea.Cmd, error) {
+func (m *PageListModel[T]) KeyMap() map[*key.Binding]func() (tea.Cmd, error) {
 	return map[*key.Binding]func() (tea.Cmd, error){}
 }
 
 func GetPageSize(repo repository.Repository) (int, error) {
 	return repo.GetIntProperty(PageSize, DefaultPageSize)
 }
-func (m *PageListModel) load(pageNum int) error {
+func (m *PageListModel[T]) load(pageNum int) error {
 	pageSize, err := GetPageSize(m.repo)
 	if err != nil {
 		return err
@@ -125,21 +145,21 @@ func (m *PageListModel) load(pageNum int) error {
 	}
 	m.lastPageNum = pageNum
 	m.lastPageSize = pageSize
-	rows, totalCount, err := m.extend.Load(pageNum, pageSize)
+	list, totalCount, err := m.extend.Load(pageNum, pageSize)
 	if err != nil {
 		return err
 	}
-
-	m.ResetColumns(rows)
-	m.Model.SetRows(rows)
+	m.Model.SetRows(m.getRows(list))
+	m.ResetColumns(m.Model.Rows())
 	m.Model.SetHeight(pageSize)
+	m.data = list
 
 	m.paginator.Page = pageNum - 1
 	m.paginator.PerPage = pageSize
 	m.paginator.SetTotalPages(totalCount)
 	return nil
 }
-func (m *PageListModel) Reload() error {
+func (m *PageListModel[T]) Reload() error {
 	pageNum := m.lastPageNum
 	if pageNum < 0 {
 		pageNum = 1
@@ -148,18 +168,19 @@ func (m *PageListModel) Reload() error {
 	return m.load(pageNum)
 }
 
-func (m *PageListModel) Reset() error {
+func (m *PageListModel[T]) Reset() error {
 	pageSize, err := GetPageSize(m.repo)
 	if err != nil {
 		return err
 	}
-	rows, totalCount, err := m.extend.Load(1, pageSize)
+	list, totalCount, err := m.extend.Load(1, pageSize)
 	if err != nil {
 		return err
 	}
-	m.ResetColumns(rows)
-	m.Model.SetRows(rows)
+	m.Model.SetRows(m.getRows(list))
+	m.ResetColumns(m.Model.Rows())
 	m.Model.SetHeight(pageSize)
+	m.data = list
 
 	m.lastPageNum = 1
 	m.paginator.Page = 0
@@ -168,7 +189,19 @@ func (m *PageListModel) Reset() error {
 	return nil
 }
 
-func (m *PageListModel) ResetColumns(rows []table.Row) {
+func (m *PageListModel[T]) getRows(list []T) []table.Row {
+	var rows []table.Row
+	for dataIndex, data := range list {
+		var row table.Row
+		for _, col := range m.cols {
+			row = append(row, col.Show(dataIndex, data))
+		}
+		rows = append(rows, row)
+	}
+	return rows
+}
+
+func (m *PageListModel[T]) ResetColumns(rows []table.Row) {
 	columnWidths := make([]int, len(m.cols))
 	for i, c := range m.cols {
 		columnWidths[i] = len(c.Title)
@@ -181,5 +214,5 @@ func (m *PageListModel) ResetColumns(rows []table.Row) {
 	for i, width := range columnWidths {
 		m.cols[i].Width = width
 	}
-	m.Model.SetColumns(m.cols)
+	m.Model.SetColumns(getTableColumns(m.cols))
 }

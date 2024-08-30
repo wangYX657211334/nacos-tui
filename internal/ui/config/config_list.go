@@ -9,7 +9,6 @@ import (
 	"github.com/wangYX657211334/nacos-tui/pkg/nacos"
 
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/table"
 	"github.com/wangYX657211334/nacos-tui/internal/ui/base"
 )
 
@@ -19,11 +18,10 @@ var (
 )
 
 type NacosConfigListModel struct {
-	base.PageListModel
+	base.PageListModel[nacos.ConfigsItem]
 	repo         repository.Repository
 	filterDataId string
 	filterGroup  string
-	cache        *nacos.ConfigsResponse
 
 	configEdit NacosConfigEdit
 }
@@ -33,27 +31,22 @@ func NewNacosConfigListModel(repo repository.Repository) *NacosConfigListModel {
 		repo:       repo,
 		configEdit: NacosConfigEdit{repo},
 	}
-	m.PageListModel = base.NewPageListModel(repo, []table.Column{
-		{Title: "Index", Width: 5},
-		{Title: "Data Id", Width: 50},
-		{Title: "Group", Width: 15},
-		{Title: "Application", Width: 15},
+	m.PageListModel = base.NewPageListModel[nacos.ConfigsItem](repo, []base.Column[nacos.ConfigsItem]{
+		{Title: "Index", Width: 5, Show: func(index int, data nacos.ConfigsItem) string { return strconv.Itoa(index + 1) }},
+		{Title: "Data Id", Width: 50, Show: func(index int, data nacos.ConfigsItem) string { return data.DataId }},
+		{Title: "Group", Width: 15, Show: func(index int, data nacos.ConfigsItem) string { return data.Group }},
+		{Title: "Application", Width: 15, Show: func(index int, data nacos.ConfigsItem) string { return data.AppName }},
 	}, m)
 	m.CommandApi = getConfigListCommandApi(m)
 	return m
 }
 
-func (m *NacosConfigListModel) Load(pageNum int, pageSize int) (rows []table.Row, totalCount int, err error) {
+func (m *NacosConfigListModel) Load(pageNum int, pageSize int) (list []nacos.ConfigsItem, totalCount int, err error) {
 	configs, err := m.repo.GetConfigs(m.filterDataId, m.filterGroup, pageNum, pageSize)
 	if err != nil {
 		return
 	}
-	m.cache = configs
-	totalCount = configs.TotalCount
-	for index, item := range configs.PageItems {
-		rows = append(rows, table.Row{strconv.Itoa(index + 1), item.DataId, item.Group, item.AppName})
-	}
-	return
+	return configs.PageItems, configs.TotalCount, nil
 }
 
 func (m *NacosConfigListModel) KeyMap() map[*key.Binding]func() (tea.Cmd, error) {
@@ -114,7 +107,7 @@ func createCommands(m *NacosConfigListModel, commandType string) []base.Command 
 			Simple(commandType+" ").Regexp("\\d+", "1").
 			Simple(",").Regexp("\\d+", "1"),
 			func(repo repository.Repository, param []string) error {
-				if len(m.cache.PageItems) == 0 {
+				if len(m.GetData()) == 0 {
 					event.Publish(event.ApplicationMessageEvent, "无数据, 无法操作")
 					return nil
 				}
@@ -123,7 +116,7 @@ func createCommands(m *NacosConfigListModel, commandType string) []base.Command 
 				if endIndex < beginIndex {
 					event.Publish(event.ApplicationMessageEvent, "输入参数错误, 起始下标应小于截止下标, 例如: 1,3")
 					return nil
-				} else if endIndex > len(m.cache.PageItems) {
+				} else if endIndex > len(m.GetData()) {
 					event.Publish(event.ApplicationMessageEvent, "输入参数错误, 下标越界")
 					return nil
 				} else if beginIndex <= 0 {
@@ -131,34 +124,34 @@ func createCommands(m *NacosConfigListModel, commandType string) []base.Command 
 					return nil
 				}
 				base.BackRoute()
-				base.Route("/config/"+commandType, m.cache.PageItems[beginIndex-1:endIndex])
+				base.Route("/config/"+commandType, m.GetData()[beginIndex-1:endIndex])
 				return nil
 			}),
 		base.NewCommand(*base.NewSuggestionBuilder().
 			Simple(commandType),
 			func(repo repository.Repository, param []string) error {
-				if len(m.cache.PageItems) == 0 {
+				if len(m.GetData()) == 0 {
 					event.Publish(event.ApplicationMessageEvent, "无数据, 无法操作")
 					return nil
 				}
 				base.BackRoute()
-				base.Route("/config/"+commandType, m.cache.PageItems)
+				base.Route("/config/"+commandType, m.GetData())
 				return nil
 			}),
 		base.NewCommand(*base.NewSuggestionBuilder().
 			Simple(commandType+" ").Regexp("\\d+", "1"),
 			func(repo repository.Repository, param []string) error {
-				if len(m.cache.PageItems) == 0 {
+				if len(m.GetData()) == 0 {
 					event.Publish(event.ApplicationMessageEvent, "无数据, 无法操作")
 					return nil
 				}
 				index, _ := strconv.Atoi(param[2])
-				if index < 1 || index > len(m.cache.PageItems) {
+				if index < 1 || index > len(m.GetData()) {
 					event.Publish(event.ApplicationMessageEvent, "输入参数错误, 下标越界")
 					return nil
 				}
 				base.BackRoute()
-				base.Route("/config/"+commandType, []nacos.ConfigsItem{m.cache.PageItems[index]})
+				base.Route("/config/"+commandType, []nacos.ConfigsItem{m.GetData()[index]})
 				return nil
 			}),
 	}

@@ -2,7 +2,6 @@ package context
 
 import (
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/wangYX657211334/nacos-tui/internal/config"
 	"github.com/wangYX657211334/nacos-tui/internal/repository"
@@ -12,35 +11,31 @@ import (
 )
 
 var (
-	contextColumns = []table.Column{
-		{Title: "Name", Width: 15},
-		{Title: "Url", Width: 35},
-		{Title: "User", Width: 10},
+	contextColumns = []base.Column[config.NacosContext]{
+		{Title: "Name", Width: 15, Show: func(index int, data config.NacosContext) string { return data.Name }},
+		{Title: "Url", Width: 35, Show: func(index int, data config.NacosContext) string { return data.Url }},
+		{Title: "User", Width: 10, Show: func(index int, data config.NacosContext) string { return data.User }},
 	}
 )
 
 type NacosContextModel struct {
-	base.PageListModel
+	base.PageListModel[config.NacosContext]
 	repo     repository.Repository
 	contexts []config.NacosContext
 }
 
 func NewNacosContextModel(repo repository.Repository) *NacosContextModel {
 	m := &NacosContextModel{repo: repo}
-	m.PageListModel = base.NewPageListModel(repo, contextColumns, m)
+	m.PageListModel = base.NewPageListModel[config.NacosContext](repo, contextColumns, m)
 	return m
 }
 
-func (m *NacosContextModel) Load(_ int, _ int) (rows []table.Row, totalCount int, err error) {
-	m.contexts, err = m.repo.GetNacosContexts()
+func (m *NacosContextModel) Load(_ int, _ int) (data []config.NacosContext, totalCount int, err error) {
+	data, err = m.repo.GetNacosContexts()
 	if err != nil {
 		return nil, 0, err
 	}
-	for _, server := range m.contexts {
-		rows = append(rows, table.Row{server.Name, server.Url, server.User})
-	}
-	totalCount = len(rows)
-	return
+	return data, len(data), nil
 }
 
 func (m *NacosContextModel) KeyMap() map[*key.Binding]func() (tea.Cmd, error) {
