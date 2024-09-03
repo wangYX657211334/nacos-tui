@@ -37,7 +37,6 @@ func NewNacosConfigListModel(repo repository.Repository) *NacosConfigListModel {
 		{Title: "Group", Width: 15, Show: func(index int, data nacos.ConfigsItem) string { return data.Group }},
 		{Title: "Application", Width: 15, Show: func(index int, data nacos.ConfigsItem) string { return data.AppName }},
 	}, m)
-	m.PageListModel.SetShowPage(false)
 	m.CommandApi = getConfigListCommandApi(m)
 	return m
 }
