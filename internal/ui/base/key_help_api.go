@@ -10,8 +10,10 @@ var (
 	AddKeyMap      = key.NewBinding(key.WithKeys("a"), key.WithHelp("a", "add"))
 	FilterKeyMap   = key.NewBinding(key.WithKeys("/"), key.WithHelp("/", "filter"))
 	EnterKeyMap    = key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "ok"))
+	DeleteKeyMap   = key.NewBinding(key.WithKeys("backspace", "delete"), key.WithHelp("delete", "delete"))
 	ShowJsonKeyMap = key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "show json"))
 	CopyKeyMap     = key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "copy"))
+	SwitchKeyMap   = key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "switch"))
 )
 
 type KeyHelpApi interface {

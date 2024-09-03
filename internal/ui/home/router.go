@@ -57,6 +57,14 @@ var Routers = []Router{
 		},
 	},
 	{
+		Name: "select",
+		Path: "/config/select",
+		Component: func(repo repository.Repository, param ...any) (NacosModel, error) {
+			configModel := param[0].(*config.NacosConfigListModel)
+			return config.NewNacosConfigSelectModel(repo, configModel), nil
+		},
+	},
+	{
 		Name: "listener",
 		Path: "/config/listener",
 		Component: func(repo repository.Repository, param ...any) (NacosModel, error) {

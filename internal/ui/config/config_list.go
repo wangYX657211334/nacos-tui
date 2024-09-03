@@ -37,6 +37,7 @@ func NewNacosConfigListModel(repo repository.Repository) *NacosConfigListModel {
 		{Title: "Group", Width: 15, Show: func(index int, data nacos.ConfigsItem) string { return data.Group }},
 		{Title: "Application", Width: 15, Show: func(index int, data nacos.ConfigsItem) string { return data.AppName }},
 	}, m)
+	m.PageListModel.SetShowPage(false)
 	m.CommandApi = getConfigListCommandApi(m)
 	return m
 }
@@ -94,6 +95,17 @@ func getConfigListCommandApi(m *NacosConfigListModel) base.CommandApi {
 	var commands []base.Command
 	commands = append(commands, createCommands(m, "clone")...)
 	commands = append(commands, createCommands(m, "delete")...)
+	commands = append(commands, base.NewCommand(*base.NewSuggestionBuilder().
+		Simple("select"),
+		func(repo repository.Repository, param []string) error {
+			if len(m.GetData()) == 0 {
+				event.Publish(event.ApplicationMessageEvent, "无数据, 无法操作")
+				return nil
+			}
+			base.BackRoute()
+			base.Route("/config/select", m)
+			return nil
+		}))
 	return base.JoinCommandApi(m.PageListModel.CommandApi, base.NewCommandApi(commands...))
 }
 
@@ -147,7 +159,7 @@ func createCommands(m *NacosConfigListModel, commandType string) []base.Command 
 					return nil
 				}
 				base.BackRoute()
-				base.Route("/config/"+commandType, []nacos.ConfigsItem{m.GetData()[index]})
+				base.Route("/config/"+commandType, []nacos.ConfigsItem{m.GetData()[index-1]})
 				return nil
 			}),
 	}

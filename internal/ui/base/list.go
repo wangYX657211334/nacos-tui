@@ -7,6 +7,8 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/wangYX657211334/nacos-tui/internal/repository"
+	"reflect"
+	"unsafe"
 )
 
 var (
@@ -34,6 +36,7 @@ type PageListModel[T any] struct {
 	lastPageSize int
 	data         []T
 	extend       Extend[T]
+	lastCursor   int
 }
 
 func TableStyle() table.Styles {
@@ -101,6 +104,23 @@ func (m *PageListModel[T]) GetData() []T {
 
 func (m *PageListModel[T]) SetShowPage(show bool) {
 	m.showPage = show
+}
+func (m *PageListModel[T]) SetCursorNoValidate(n int) {
+	structValue := reflect.ValueOf(&m.Model).Elem()
+	cursorField, _ := structValue.Type().FieldByName("cursor")
+	*(*int)(unsafe.Pointer(structValue.UnsafeAddr() + cursorField.Offset)) = n
+	m.UpdateViewport()
+}
+
+func (m *PageListModel[T]) Focus() {
+	m.SetCursor(m.lastCursor)
+	m.Model.Focus()
+}
+
+func (m *PageListModel[T]) Blur() {
+	m.lastCursor = m.Cursor()
+	m.SetCursorNoValidate(-1)
+	m.Model.Blur()
 }
 func (m *PageListModel[T]) Selected() (bool, T) {
 	row := m.SelectedRow()

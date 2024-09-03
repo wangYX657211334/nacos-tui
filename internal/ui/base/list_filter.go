@@ -10,9 +10,8 @@ import (
 
 var (
 	filterStyle = lipgloss.NewStyle().
-			BorderStyle(lipgloss.HiddenBorder()).
-			BorderForeground(lipgloss.Color("240"))
-	SwitchFilterKeyMap = key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "switch filter"))
+		BorderStyle(lipgloss.HiddenBorder()).
+		BorderForeground(lipgloss.Color("240"))
 )
 
 type ListFilterModel struct {
@@ -40,7 +39,7 @@ func NewListFilterModel(repo repository.Repository, defaultDataId, defaultGroup 
 	group.SetValue(defaultGroup)
 	dataId.Focus()
 	return &ListFilterModel{
-		KeyHelpApi:  NewKeyHelpApi(SwitchFilterKeyMap, EnterKeyMap),
+		KeyHelpApi:  NewKeyHelpApi(SwitchKeyMap, EnterKeyMap),
 		CommandApi:  EmptyCommandHandler(),
 		dataId:      dataId,
 		group:       group,
@@ -57,7 +56,7 @@ func (m *ListFilterModel) Update(msg tea.Msg) (tea.Cmd, error) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch {
-		case key.Matches(msg, SwitchFilterKeyMap):
+		case key.Matches(msg, SwitchKeyMap):
 			m.dataIdFocus = !m.dataIdFocus
 			if m.dataIdFocus {
 				m.dataId.Focus()

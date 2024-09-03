@@ -112,7 +112,7 @@ func (m *NacosConfigCloneModel) Update(msg tea.Msg) (cmd tea.Cmd, err error) {
 	}()
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if key.Matches(msg, base.SwitchFilterKeyMap) {
+		if key.Matches(msg, base.SwitchKeyMap) {
 			m.views[m.focusIndex]().Blur()
 			if m.focusIndex+1 >= len(m.views) {
 				m.focusIndex = 0
