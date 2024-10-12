@@ -83,7 +83,14 @@ func (m *NacosConfigListModel) KeyMap() map[*key.Binding]func() (tea.Cmd, error)
 		&base.EditKeyMap: func() (cmd tea.Cmd, err error) {
 			ok, row := m.Selected()
 			if ok {
-				return m.configEdit.EditConfigContent(row.DataId, row.Group)
+				return m.configEdit.EditConfigContent("vim", row.DataId, row.Group)
+			}
+			return
+		},
+		&base.GUIEditKeyMap: func() (cmd tea.Cmd, err error) {
+			ok, row := m.Selected()
+			if ok {
+				return m.configEdit.EditConfigContent("gedit -w", row.DataId, row.Group)
 			}
 			return
 		},

@@ -12,12 +12,12 @@ type NacosConfigEdit struct {
 	repo repository.Repository
 }
 
-func (m *NacosConfigEdit) EditConfigContent(dataId string, group string) (tea.Cmd, error) {
+func (m *NacosConfigEdit) EditConfigContent(command string, dataId string, group string) (tea.Cmd, error) {
 	configRes, err := m.repo.GetConfig(dataId, group)
 	if err != nil {
 		return nil, err
 	}
-	return util.EditContentBySystemEditor(fmt.Sprintf("%s@%s", group, dataId), configRes.Content, func(ok bool, newContentYaml string, err error) {
+	return util.EditContent(command, fmt.Sprintf("%s@%s", group, dataId), configRes.Content, func(ok bool, newContentYaml string, err error) {
 		if err != nil {
 			event.Publish(event.ApplicationMessageEvent, "报错啦: "+err.Error())
 			return
