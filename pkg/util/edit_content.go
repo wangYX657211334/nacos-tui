@@ -25,7 +25,10 @@ func EditContent(command string, fileName string, content string, fn EditContent
 	if err := os.WriteFile(fileName, []byte(content), 0644); err != nil {
 		fn(false, "", errors.Join(errors.New("write file error"), err))
 	}
-	return tea.ExecProcess(exec.Command(command, fileName), func(err error) tea.Msg {
+	commandAndArgs := strings.Split(command, " ")
+	args := commandAndArgs[1:]
+	args = append(args, fileName)
+	return tea.ExecProcess(exec.Command(commandAndArgs[0], args...), func(err error) tea.Msg {
 		defer func(name string) {
 			rErr := os.Remove(name)
 			if rErr != nil {
