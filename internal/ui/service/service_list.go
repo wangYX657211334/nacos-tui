@@ -3,10 +3,10 @@ package service
 import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/wangYX657211334/nacos-tui/internal/repository"
+	"github.com/wangYX657211334/nacos-tui/pkg/nacos"
 	"strconv"
 
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/table"
 	"github.com/wangYX657211334/nacos-tui/internal/ui/base"
 )
 
@@ -15,7 +15,7 @@ var (
 )
 
 type NacosServiceListModel struct {
-	base.PageListModel
+	base.PageListModel[nacos.ServicesItem]
 	repo         repository.Repository
 	filterDataId string
 	filterGroup  string
@@ -23,28 +23,23 @@ type NacosServiceListModel struct {
 
 func NewNacosServiceListModel(repo repository.Repository) *NacosServiceListModel {
 	m := &NacosServiceListModel{repo: repo}
-	m.PageListModel = base.NewPageListModel(repo, []table.Column{
-		{Title: "Index", Width: 5},
-		{Title: "Name", Width: 30},
-		{Title: "Group", Width: 15},
-		{Title: "ClusterCount", Width: 15},
-		{Title: "IpCount", Width: 10},
-		{Title: "HealthyCount", Width: 15},
+	m.PageListModel = base.NewPageListModel[nacos.ServicesItem](repo, []base.Column[nacos.ServicesItem]{
+		{Title: "Index", Width: 5, Show: func(index int, data nacos.ServicesItem) string { return strconv.Itoa(index + 1) }},
+		{Title: "Name", Width: 30, Show: func(index int, data nacos.ServicesItem) string { return data.Name }},
+		{Title: "Group", Width: 15, Show: func(index int, data nacos.ServicesItem) string { return data.GroupName }},
+		{Title: "ClusterCount", Width: 15, Show: func(index int, data nacos.ServicesItem) string { return strconv.Itoa(data.ClusterCount) }},
+		{Title: "IpCount", Width: 10, Show: func(index int, data nacos.ServicesItem) string { return strconv.Itoa(data.IpCount) }},
+		{Title: "HealthyCount", Width: 15, Show: func(index int, data nacos.ServicesItem) string { return strconv.Itoa(data.HealthyInstanceCount) }},
 	}, m)
 	return m
 }
 
-func (m *NacosServiceListModel) Load(pageNum int, pageSize int) (rows []table.Row, totalCount int, err error) {
+func (m *NacosServiceListModel) Load(pageNum int, pageSize int) (data []nacos.ServicesItem, totalCount int, err error) {
 	res, err := m.repo.GetServices(m.filterDataId, m.filterGroup, pageNum, pageSize)
 	if err != nil {
 		return
 	}
-	totalCount = res.Count
-	for index, item := range res.ServiceList {
-		rows = append(rows, table.Row{strconv.Itoa(index + 1), item.Name, item.GroupName,
-			strconv.Itoa(item.ClusterCount), strconv.Itoa(item.IpCount), strconv.Itoa(item.HealthyInstanceCount)})
-	}
-	return
+	return res.ServiceList, res.Count, nil
 }
 
 func (m *NacosServiceListModel) KeyMap() map[*key.Binding]func() (tea.Cmd, error) {
@@ -58,16 +53,16 @@ func (m *NacosServiceListModel) KeyMap() map[*key.Binding]func() (tea.Cmd, error
 			return
 		},
 		&base.EnterKeyMap: func() (tea.Cmd, error) {
-			row := m.SelectedRow()
-			if row != nil {
-				base.Route("/service/instance", row[1], row[2])
+			ok, row := m.Selected()
+			if ok {
+				base.Route("/service/instance", row.Name, row.GroupName)
 			}
 			return nil, nil
 		},
 		&SubscribersKeyMap: func() (tea.Cmd, error) {
-			row := m.SelectedRow()
-			if row != nil {
-				base.Route("/service/subscriber", row[1], row[2])
+			ok, row := m.Selected()
+			if ok {
+				base.Route("/service/subscriber", row.Name, row.GroupName)
 			}
 			return nil, nil
 		},

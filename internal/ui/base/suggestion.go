@@ -59,7 +59,7 @@ func NewSuggestionBuilder() *SuggestionBuilder {
 }
 
 func (sb *SuggestionBuilder) SimpleFormat(format string, param ...any) *SuggestionBuilder {
-	return sb.Simple(fmt.Sprintf(format, param))
+	return sb.Simple(fmt.Sprintf(format, param...))
 }
 func (sb *SuggestionBuilder) Simple(str string) *SuggestionBuilder {
 	sb.matchers = append(sb.matchers, &StringMatcher{str})

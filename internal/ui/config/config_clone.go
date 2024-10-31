@@ -2,7 +2,6 @@ package config
 
 import (
 	"github.com/charmbracelet/bubbles/key"
-	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/textinput"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
@@ -20,8 +19,18 @@ var (
 				BorderForeground(lipgloss.Color("#b8efe4"))
 )
 
+type CloneItem struct {
+	FromNamespace string
+	FromDataId    string
+	FromGroup     string
+
+	ToNamespace string
+	ToDataId    string
+	ToGroup     string
+}
+
 type NacosConfigCloneModel struct {
-	base.PageListModel
+	base.PageListModel[CloneItem]
 	repo       repository.Repository
 	configs    []nacos.ConfigsItem
 	namespaces []nacos.NamespacesItem
@@ -38,14 +47,14 @@ func NewNacosConfigClone(repo repository.Repository, configs []nacos.ConfigsItem
 		repo:    repo,
 		configs: configs,
 	}
-	m.PageListModel = base.NewPageListModel(repo, []table.Column{
-		{Title: "Namespace", Width: 15},
-		{Title: "Data Id", Width: 30},
-		{Title: "Group", Width: 15},
-		{Title: " ", Width: 5},
-		{Title: "New-Namespace", Width: 15},
-		{Title: "Data Id", Width: 30},
-		{Title: "New-Group", Width: 15},
+	m.PageListModel = base.NewPageListModel[CloneItem](repo, []base.Column[CloneItem]{
+		{Title: "Namespace", Width: 15, Show: func(index int, data CloneItem) string { return data.FromNamespace }},
+		{Title: "Data Id", Width: 30, Show: func(index int, data CloneItem) string { return data.FromDataId }},
+		{Title: "Group", Width: 15, Show: func(index int, data CloneItem) string { return data.FromGroup }},
+		{Title: " ", Width: 5, Show: func(index int, data CloneItem) string { return "→" }},
+		{Title: "New-Namespace", Width: 15, Show: func(index int, data CloneItem) string { return data.ToNamespace }},
+		{Title: "Data Id", Width: 30, Show: func(index int, data CloneItem) string { return data.ToDataId }},
+		{Title: "New-Group", Width: 15, Show: func(index int, data CloneItem) string { return data.ToGroup }},
 	}, m)
 	m.CommandApi = getConfigCloneCommandApi(m)
 	m.Blur()
@@ -103,7 +112,7 @@ func (m *NacosConfigCloneModel) Update(msg tea.Msg) (cmd tea.Cmd, err error) {
 	}()
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		if key.Matches(msg, base.SwitchFilterKeyMap) {
+		if key.Matches(msg, base.SwitchKeyMap) {
 			m.views[m.focusIndex]().Blur()
 			if m.focusIndex+1 >= len(m.views) {
 				m.focusIndex = 0
@@ -145,7 +154,7 @@ func (m *NacosConfigCloneModel) View() (v string) {
 	return
 }
 
-func (m *NacosConfigCloneModel) Load(_ int, _ int) (rows []table.Row, totalCount int, err error) {
+func (m *NacosConfigCloneModel) Load(_ int, _ int) (data []CloneItem, totalCount int, err error) {
 	if m.namespaces == nil {
 		res, err := m.repo.GetNamespaces()
 		if err != nil {
@@ -164,17 +173,16 @@ func (m *NacosConfigCloneModel) Load(_ int, _ int) (rows []table.Row, totalCount
 		m.namespaceView.CurrentItem = &currentItem
 	}
 	for _, config := range m.configs {
-		rows = append(rows, table.Row{
+		data = append(data, CloneItem{
 			m.namespaceName(config.Tenant),
 			config.DataId,
 			config.Group,
-			"→",
 			m.namespaceView.CurrentItem.Name,
 			config.DataId,
 			m.groupView.Value(),
 		})
 	}
-	totalCount = len(rows)
+	totalCount = len(data)
 	return
 }
 

@@ -2,9 +2,10 @@ package storage
 
 import (
 	"database/sql"
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/glebarez/go-sqlite"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 func NewConnection() (db *sql.DB, err error) {
@@ -13,7 +14,7 @@ func NewConnection() (db *sql.DB, err error) {
 		return nil, err
 	}
 	dbPath := filepath.Join(userHome, ".nacos-tui", "nacos-tui.db")
-	db, err = sql.Open("sqlite3", dbPath)
+	db, err = sql.Open("sqlite", dbPath)
 	if err != nil {
 		return nil, err
 	}
@@ -32,8 +33,25 @@ func NewConnection() (db *sql.DB, err error) {
         error_message TEXT,
         time INTEGER
     );
-    `
+    CREATE TABLE IF NOT EXISTS nacos_context (
+        name varchar(32) PRIMARY KEY,
+        url varchar(256),
+        username varchar(256),
+        password varchar(256),
+        namespace varchar(256),
+        namespace_name varchar(256)
+    );
+    CREATE TABLE IF NOT EXISTS system_config (
+        key varchar(32) PRIMARY KEY,
+        value varchar(256)
+    );
+	`
 	_, err = db.Exec(createTableSQL)
+	if err != nil {
+		return nil, err
+	}
+	sevenDayAgo := time.Now().UnixMilli() - (time.Hour * 24 * 7).Milliseconds()
+	_, err = db.Exec("DELETE FROM audit WHERE time < ?", sevenDayAgo)
 	if err != nil {
 		return nil, err
 	}

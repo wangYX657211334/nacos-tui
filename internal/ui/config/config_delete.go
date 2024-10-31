@@ -1,7 +1,6 @@
 package config
 
 import (
-	"github.com/charmbracelet/bubbles/table"
 	"github.com/wangYX657211334/nacos-tui/internal/repository"
 	"github.com/wangYX657211334/nacos-tui/internal/ui/base"
 	"github.com/wangYX657211334/nacos-tui/pkg/event"
@@ -9,7 +8,7 @@ import (
 )
 
 type NacosConfigDeleteModel struct {
-	base.PageListModel
+	base.PageListModel[nacos.ConfigsItem]
 	repo    repository.Repository
 	configs []nacos.ConfigsItem
 }
@@ -19,27 +18,18 @@ func NewNacosConfigDeleteModel(repo repository.Repository, configs []nacos.Confi
 		repo:    repo,
 		configs: configs,
 	}
-	m.PageListModel = base.NewPageListModel(repo, []table.Column{
-		{Title: "Operation", Width: 25},
-		{Title: "Data Id", Width: 50},
-		{Title: "Group", Width: 15},
+	m.PageListModel = base.NewPageListModel[nacos.ConfigsItem](repo, []base.Column[nacos.ConfigsItem]{
+		{Title: "Operation", Width: 25, Show: func(index int, data nacos.ConfigsItem) string { return "Delete" }},
+		{Title: "Data Id", Width: 50, Show: func(index int, data nacos.ConfigsItem) string { return data.DataId }},
+		{Title: "Group", Width: 15, Show: func(index int, data nacos.ConfigsItem) string { return data.Group }},
 	}, m)
 	m.PageListModel.CommandApi = getConfigDeleteCommandApi(m)
 	m.PageListModel.SetShowPage(false)
 	return m
 }
 
-func (m *NacosConfigDeleteModel) Load(_ int, _ int) (rows []table.Row, totalCount int, err error) {
-
-	for _, item := range m.configs {
-		rows = append(rows, table.Row{
-			"Delete",
-			item.DataId,
-			item.Group,
-		})
-	}
-	totalCount = len(rows)
-	return
+func (m *NacosConfigDeleteModel) Load(_ int, _ int) (data []nacos.ConfigsItem, totalCount int, err error) {
+	return m.configs, len(data), nil
 }
 
 func getConfigDeleteCommandApi(m *NacosConfigDeleteModel) base.CommandApi {

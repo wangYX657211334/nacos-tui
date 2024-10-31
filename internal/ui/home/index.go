@@ -35,8 +35,9 @@ var (
 			}),
 		base.NewCommand(*base.NewSuggestionBuilder().Simple("context ").Regexp("\\w+", "dev"),
 			func(repo repository.Repository, param []string) error {
+				defer base.BackRoute()
 				defer repo.ResetInitialization()
-				return repo.SetNacosContext(param[2])
+				return repo.SetActiveNacosContext(param[2])
 			}),
 		base.NewCommand(*base.NewSuggestionBuilder().Simple("namespace"),
 			func(repo repository.Repository, param []string) error {
@@ -78,11 +79,8 @@ type HomeModel struct {
 	help    help.Model
 }
 
-func NewHomeModel(db *sql.DB) (*HomeModel, error) {
-	repo, err := repository.NewRepository(db)
-	if err != nil {
-		return nil, err
-	}
+func NewHomeModel(db *sql.DB) *HomeModel {
+	repo := repository.NewRepository(db)
 	m := HomeModel{
 		repo:     repo,
 		viewFlag: helpViewFlag,
@@ -90,14 +88,20 @@ func NewHomeModel(db *sql.DB) (*HomeModel, error) {
 		contents: []NacosModel{},
 		help:     help.New(),
 	}
-	m.pushRouter(DefaultRoute())
+	err := m.pushRouter(DefaultRoute())
+	if err != nil {
+		log.Panic(err)
+	}
 
 	event.RegisterSubscribe(event.RouteEvent, func(param ...any) {
 		path := param[0].(string)
 		pathParam := param[1:]
 		for _, router := range Routers {
 			if strings.EqualFold(router.Path, path) {
-				m.pushRouter(router, pathParam...)
+				err := m.pushRouter(router, pathParam...)
+				if err != nil {
+					log.Panic(err)
+				}
 				break
 			}
 		}
@@ -115,25 +119,30 @@ func NewHomeModel(db *sql.DB) (*HomeModel, error) {
 			event.Publish(event.RefreshScreenEvent)
 		}()
 	})
-	return &m, nil
+	return &m
 }
 
-func (m *HomeModel) pushRouter(router Router, param ...any) {
+func (m *HomeModel) pushRouter(router Router, param ...any) error {
 	defer m.panicHandle()
 	if len(m.routers) > 0 && m.routers[len(m.routers)-1].Path == router.Path {
-		return
+		return nil
+	}
+	component, err := router.Component(m.repo, param...)
+	if err != nil {
+		return err
 	}
 	if router.RootComponent {
 		m.routers = []Router{router}
-		m.contents = []NacosModel{router.Component(m.repo, param...)}
+		m.contents = []NacosModel{component}
 	} else {
 		m.routers = append(m.routers, router)
-		m.contents = append(m.contents, router.Component(m.repo, param...))
+		m.contents = append(m.contents, component)
 	}
-	_, err := m.Content().Update(base.RefreshScreenMsg)
+	_, err = m.Content().Update(base.RefreshScreenMsg)
 	if err != nil {
-		log.Panic(err)
+		return err
 	}
+	return nil
 }
 
 func (m *HomeModel) panicHandle() {
@@ -197,7 +206,7 @@ func (m *HomeModel) Update(msg tea.Msg) (tm tea.Model, cmd tea.Cmd) {
 }
 
 func (m *HomeModel) View() (v string) {
-
+	context, _ := m.repo.GetNacosContext()
 	v += lipgloss.NewStyle().Bold(true).Render(
 		`
   _   _                       _____ _   _ ___ 
@@ -207,10 +216,10 @@ func (m *HomeModel) View() (v string) {
  |_| \_|\__,_|\___\___/|___/   |_|  \___/|___| 
                                                `) + "\n"
 	v += fmt.Sprintf("Context Name: %s Url: %s Namespace: %s Username: %s\n",
-		base.MajorFontStyle.Render(m.repo.GetNacosContext().Name),
-		base.MajorFontStyle.Render(m.repo.GetNacosContext().Url),
-		base.MajorFontStyle.Render(m.repo.GetNacosContext().UseNamespaceName),
-		base.MajorFontStyle.Render(m.repo.GetNacosContext().User),
+		base.MajorFontStyle.Render(context.Name),
+		base.MajorFontStyle.Render(context.Url),
+		base.MajorFontStyle.Render(context.UseNamespaceName),
+		base.MajorFontStyle.Render(context.User),
 	)
 	lastIndex := len(m.routers) - 1
 	for i, router := range m.routers {

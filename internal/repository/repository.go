@@ -18,16 +18,16 @@ type repository struct {
 	configApi
 }
 
-func NewRepository(db *sql.DB) (Repository, error) {
+func NewRepository(db *sql.DB) Repository {
 	r := &repository{}
-	appConfig, err := config.LoadApplicationConfig()
-	if err != nil {
-		return nil, err
-	}
+	appConfig := config.NewApi(db)
 	r.configApi = appConfig
-	r.nacosApi = nacos.NewApi(func() (url string, username string, password string, namespace string) {
-		ctx := appConfig.GetNacosContext()
-		return ctx.Url, ctx.User, ctx.Password, ctx.UseNamespace
+	r.nacosApi = nacos.NewApi(func() (url string, username string, password string, namespace string, err error) {
+		ctx, err := appConfig.GetNacosContext()
+		if err != nil {
+			return "", "", "", "", err
+		}
+		return ctx.Url, ctx.User, ctx.Password, ctx.UseNamespace, nil
 	}, db)
-	return r, nil
+	return r
 }
