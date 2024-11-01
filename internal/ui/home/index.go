@@ -207,13 +207,18 @@ func (m *HomeModel) Update(msg tea.Msg) (tm tea.Model, cmd tea.Cmd) {
 
 func (m *HomeModel) View() (v string) {
 	context, _ := m.repo.GetNacosContext()
+	nacosVersion := m.repo.GetVersion()
+	var showVersion string
+	if len(nacosVersion) != 0 {
+		showVersion = "(" + nacosVersion + ")"
+	}
 	v += lipgloss.NewStyle().Bold(true).Render(
 		`
   _   _                       _____ _   _ ___ 
  | \ | | __ _  ___ ___  ___  |_   _| | | |_ _|
  |  \| |/ _' |/ __/ _ \/ __|   | | | | | || | 
  | |\  | (_| | (_| (_) \__ \   | | | |_| || | 
- |_| \_|\__,_|\___\___/|___/   |_|  \___/|___| 
+ |_| \_|\__,_|\___\___/|___/   |_|  \___/|___| `+showVersion+`
                                                `) + "\n"
 	v += fmt.Sprintf("Context Name: %s Url: %s Namespace: %s Username: %s\n",
 		base.MajorFontStyle.Render(context.Name),

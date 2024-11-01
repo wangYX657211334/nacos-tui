@@ -74,6 +74,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 
 type Api interface {
 	ResetInitialization()
+	GetVersion() string
 	GetNamespaces() (*NamespacesResponse, error)
 	GetConfigs(dataId string, group string, pageNo int, pageSize int) (*ConfigsResponse, error)
 	GetConfig(dataId string, group string) (*ConfigResponse, error)
@@ -122,6 +123,13 @@ func (n *api) ResetInitialization() {
 
 func (n *api) state() (*StateResponse, error) {
 	return retryCallRemote[StateResponse](n, func() (*http.Response, error) { return n.httpClient.Get(n.url + "/v1/console/server/state") })
+}
+func (n *api) GetVersion() string {
+	state, err := n.state()
+	if err != nil {
+		return ""
+	}
+	return state.Version
 }
 
 const loginUrl = "/v1/auth/login"
