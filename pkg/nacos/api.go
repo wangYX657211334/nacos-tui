@@ -121,7 +121,7 @@ func (n *api) ResetInitialization() {
 }
 
 func (n *api) state() (*StateResponse, error) {
-	return callRemote[StateResponse](n, func() (*http.Response, error) { return n.httpClient.Get(n.url + "/v1/console/server/state") })
+	return retryCallRemote[StateResponse](n, func() (*http.Response, error) { return n.httpClient.Get(n.url + "/v1/console/server/state") })
 }
 
 const loginUrl = "/v1/auth/login"
@@ -288,9 +288,9 @@ func requiredLoginCallRemote[T any](n *api, call func() (*http.Response, error))
 		}
 		n.initialized = true
 	}
-	return callRemote[T](n, call)
+	return retryCallRemote[T](n, call)
 }
-func callRemote[T any](n *api, call func() (*http.Response, error)) (res *T, err error) {
+func retryCallRemote[T any](n *api, call func() (*http.Response, error)) (res *T, err error) {
 	// 实际调用
 	response, err := call()
 	if err != nil {
@@ -318,6 +318,30 @@ func callRemote[T any](n *api, call func() (*http.Response, error)) (res *T, err
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		return nil, errors.Join(errors.New("nacos response body read error"), err)
+	}
+	if err = json.Unmarshal(body, &res); err != nil {
+		return nil, errors.Join(errors.New("nacos response body json unmarshal error"), err)
+	}
+	return res, nil
+}
+func callRemote[T any](_ *api, call func() (*http.Response, error)) (res *T, err error) {
+	// 实际调用
+	response, err := call()
+	if err != nil {
+		return nil, errors.Join(errors.New("nacos request error"), err)
+	}
+	defer func(body io.ReadCloser) {
+		if closeErr := body.Close(); closeErr != nil {
+			err = errors.Join(errors.New("nacos response body close error"), closeErr, err)
+			return
+		}
+	}(response.Body)
+	body, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, errors.Join(errors.New("nacos response body read error"), err)
+	}
+	if response.StatusCode >= 300 {
+		return nil, errors.New("nacos login error: " + string(body))
 	}
 	if err = json.Unmarshal(body, &res); err != nil {
 		return nil, errors.Join(errors.New("nacos response body json unmarshal error"), err)

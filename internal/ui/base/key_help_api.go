@@ -14,6 +14,7 @@ var (
 	DeleteKeyMap   = key.NewBinding(key.WithKeys("backspace", "delete"), key.WithHelp("delete", "delete"))
 	ShowJsonKeyMap = key.NewBinding(key.WithKeys("enter"), key.WithHelp("enter", "show json"))
 	CopyKeyMap     = key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "copy"))
+	CloneKeyMap    = key.NewBinding(key.WithKeys("c"), key.WithHelp("c", "clone"))
 	SwitchKeyMap   = key.NewBinding(key.WithKeys("tab"), key.WithHelp("tab", "switch"))
 )
 
