@@ -14,9 +14,6 @@ import (
 type EditContentCallback func(ok bool, newContentYaml string, err error)
 type EditStructCallback[T any] func(ok bool, newContent T, err error)
 
-func EditContentBySystemEditor(fileName string, content string, fn EditContentCallback) tea.Cmd {
-	return EditContent("vim", fileName, content, fn)
-}
 func EditContent(command string, fileName string, content string, fn EditContentCallback) tea.Cmd {
 	filePath := filepath.Join(os.TempDir(), "nacos-tui", fileName)
 	if err := os.MkdirAll(filepath.Dir(filePath), 0755); err != nil {
@@ -36,7 +33,7 @@ func EditContent(command string, fileName string, content string, fn EditContent
 			}
 		}(fileName)
 		if err != nil {
-			fn(false, "", errors.Join(errors.New("exec vim error"), err))
+			fn(false, "", errors.Join(errors.New("exec "+commandAndArgs[0]+" error"), err))
 			return nil
 		}
 		newContentBytes, err := os.ReadFile(fileName)
@@ -49,13 +46,13 @@ func EditContent(command string, fileName string, content string, fn EditContent
 	})
 }
 
-func EditStructBySystemEditor[T any](fileName string, content T, fn EditStructCallback[T]) tea.Cmd {
+func EditStruct[T any](command string, fileName string, content T, fn EditStructCallback[T]) tea.Cmd {
 	var newContent T
 	contentBytes, err := yaml.Marshal(content)
 	if err != nil {
 		fn(false, newContent, err)
 	}
-	return EditContentBySystemEditor(fileName, string(contentBytes), func(ok bool, newContentYaml string, err error) {
+	return EditContent(command, fileName, string(contentBytes), func(ok bool, newContentYaml string, err error) {
 		if err != nil {
 			fn(false, newContent, err)
 		}

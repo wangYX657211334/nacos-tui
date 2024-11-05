@@ -55,7 +55,11 @@ func (m *NacosContextModel) KeyMap() map[*key.Binding]func() (tea.Cmd, error) {
 		&base.EditKeyMap: func() (cmd tea.Cmd, err error) {
 			ok, context := m.Selected()
 			if ok {
-				return util.EditStructBySystemEditor(context.Name+".yaml", context, func(ok bool, newContext config.NacosContext, err error) {
+				command, err := m.repo.GetProperty(base.EditCommand, base.DefaultEditCommand)
+				if err != nil {
+					return nil, err
+				}
+				return util.EditStruct(command, context.Name+".yaml", context, func(ok bool, newContext config.NacosContext, err error) {
 					if err != nil {
 						event.Publish(event.ApplicationMessageEvent, "报错啦: "+err.Error())
 						return
@@ -77,7 +81,11 @@ func (m *NacosContextModel) KeyMap() map[*key.Binding]func() (tea.Cmd, error) {
 				User:             "nacos",
 				Password:         "nacos",
 			}
-			return util.EditStructBySystemEditor(context.Name+".yaml", context, func(ok bool, newContext config.NacosContext, err error) {
+			command, err := m.repo.GetProperty(base.EditCommand, base.DefaultEditCommand)
+			if err != nil {
+				return nil, err
+			}
+			return util.EditStruct(command, "unknown.yaml", context, func(ok bool, newContext config.NacosContext, err error) {
 				if err != nil {
 					event.Publish(event.ApplicationMessageEvent, "报错啦: "+err.Error())
 					return
@@ -90,10 +98,14 @@ func (m *NacosContextModel) KeyMap() map[*key.Binding]func() (tea.Cmd, error) {
 				}
 			}), nil
 		},
-		&base.CopyKeyMap: func() (cmd tea.Cmd, err error) {
+		&base.CloneKeyMap: func() (cmd tea.Cmd, err error) {
 			ok, context := m.Selected()
 			if ok {
-				return util.EditStructBySystemEditor(context.Name+".yaml", context, func(ok bool, newContext config.NacosContext, err error) {
+				command, err := m.repo.GetProperty(base.EditCommand, base.DefaultEditCommand)
+				if err != nil {
+					return nil, err
+				}
+				return util.EditStruct(command, "clone-"+context.Name+".yaml", context, func(ok bool, newContext config.NacosContext, err error) {
 					if err != nil {
 						event.Publish(event.ApplicationMessageEvent, "报错啦: "+err.Error())
 						return

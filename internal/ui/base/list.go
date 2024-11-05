@@ -15,8 +15,10 @@ var (
 	TableBorderStyle = lipgloss.NewStyle().
 				BorderStyle(lipgloss.NormalBorder()).
 				BorderForeground(lipgloss.Color("240"))
-	PageSize        = "page.size"
-	DefaultPageSize = "20"
+	PageSize           = "page.size"
+	DefaultPageSize    = "20"
+	EditCommand        = "edit.command"
+	DefaultEditCommand = "vim"
 )
 
 type Extend[T any] interface {
@@ -79,6 +81,11 @@ func NewPageListModel[T any](repo repository.Repository, cols []Column[T], exten
 				SimpleFormat("set %s ", PageSize).Regexp("\\d+", DefaultPageSize),
 				func(repo repository.Repository, param []string) error {
 					return repo.SetProperty(PageSize, param[2])
+				}),
+			NewCommand(*NewSuggestionBuilder().
+				SimpleFormat("set %s ", EditCommand).Regexp(".+", DefaultEditCommand),
+				func(repo repository.Repository, param []string) error {
+					return repo.SetProperty(EditCommand, param[2])
 				}),
 		),
 		repo:        repo,
