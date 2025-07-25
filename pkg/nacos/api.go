@@ -97,6 +97,7 @@ type api struct {
 	token       string
 	namespace   string
 	initialized bool
+	stateCache  *StateResponse
 	db          *sql.DB
 	httpClient  *http.Client
 }
@@ -119,10 +120,20 @@ func NewApi(loginParam func() (url string, username string, password string, nam
 
 func (n *api) ResetInitialization() {
 	n.initialized = false
+	n.token = ""
+	n.stateCache = nil
 }
 
 func (n *api) state() (*StateResponse, error) {
-	return retryCallRemote[StateResponse](n, func() (*http.Response, error) { return n.httpClient.Get(n.url + "/v1/console/server/state") })
+	if n.stateCache != nil {
+		return n.stateCache, nil
+	}
+	stateCache, err := retryCallRemote[StateResponse](n, func() (*http.Response, error) { return n.httpClient.Get(n.url + "/v1/console/server/state") })
+	if err != nil {
+		return nil, err
+	}
+	n.stateCache = stateCache
+	return stateCache, nil
 }
 func (n *api) GetVersion() string {
 	state, err := n.state()
@@ -139,11 +150,7 @@ func (n *api) refresh() (err error) {
 	if err != nil {
 		return err
 	}
-	state, err := n.state()
-	if err != nil {
-		return err
-	}
-	if state.AuthEnabled != "true" {
+	if len(n.username) == 0 || len(n.password) == 0 {
 		return nil
 	}
 	loginRes, err := callRemote[LoginResponse](n, func() (*http.Response, error) {
